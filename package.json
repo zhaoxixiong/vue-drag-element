@@ -1,0 +1,29 @@
+{
+  "name": "vue-drag-element",
+  "version": "1.0.1",
+  "description": "vue-drag-element",
+  "main": "./src/index.js",
+  "dependencies": {
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "zhaoxixiong",
+  "license": "ISC",
+  "keywords": [
+    "vue-drag",
+    "vue-drag-element",
+    "vue-plugin",
+    "drag",
+    "drag-element"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhaoxixiong/vue-drag-element.git"
+  },
+  "bugs":"https://github.com/zhaoxixiong/vue-drag-element/issues",
+  "homepage": "https://github.com/zhaoxixiong/vue-drag-element#readme"
+}
