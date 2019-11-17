@@ -7,10 +7,12 @@
 <script>
 export default {
   name: "VueDragElement",
-  props:{
+  props: {
     options: {
-     type: Object,
-     default: {}
+      type: Object,
+      default: () => {
+        return {};
+      }
     }
   },
   data() {
@@ -18,153 +20,239 @@ export default {
       doc: document,
       wrap: null,
       evs: {},
-      initPoint: { ...this.options.position },
-      touchInfo:{
-        start:{}
-      },
-      dis:{ x:0, y:0 },
+      startPoint: {},
+      defaultPoint: {}, // transform point record
+      tCurrentPoint: { x: 0, y: 0 },
+      startTouchInfo: {},
+      dis: { x: 0, y: 0 },
       numReg: /^\d+$/,
       platform: this.getPlatform(),
-      wrapSize: { width: 0, height: 0 },
-      screenSize:{ width: 0, height: 0 },
-      // DIRCCTION_X as x director
-      DIRCCTION_X : 0,
-      // DIRCCTION_Y as y director
-      DIRCCTION_Y : 1,
-      directionMap: {},
-      // handleTypes attribute
-      handleTypes: [
-          { 
-            left: 0,
-            right: 1,
-            sizeType : 'width',
-            disType:'x'
-           },
-           { 
-            top: 0,
-            bottom: 1,
-            sizeType : 'height',
-            disType:'y'
-           }
-        ],
-        position: {  ...this.options.position }
+      wrapSize: { x: 0, y: 0 },
+      screenceSize: { x: 0, y: 0 }, // target size x => width, y => height
+      positionRange: { x: [0, 0], y: [0, 0] },
+      position: {},
+      isTransformSupport: this.cssSupported("transform"),
+      translateRangeMap: {
+        left: {
+          name: "left",
+          index: 0,
+          type: "x"
+        },
+        top: {
+          name: "top",
+          index: 0,
+          type: "y"
+        },
+        right: {
+          name: "right",
+          index: 1,
+          type: "x"
+        },
+        bottom: {
+          name: "bottom",
+          index: 1,
+          type: "y"
+        }
+      },
+      edgeSpace: this.options.edgeSpace ? [...this.options.edgeSpace] : []
     };
   },
   created() {
-    this.evs = {
-        START: this.platform ? 'touchstart' : 'mousedown',
-        MOVE: this.platform ? 'touchmove' : 'mousemove',
-        END: this.platform ? 'touchend' : 'mouseup',
+    // init data in created
+    const dataName = ["startPoint", "defaultPoint", "position"];
+    for (let item of dataName) {
+      this[item] = this.options.position ? { ...this.options.position } : {};
+    }
+    // if transform support reset startPoint atrribute value
+    if (this.isTransformSupport) {
+      for (let key in this.startPoint) {
+        this.startPoint[key] = 0;
       }
-    this.directionMap =  {
-        left: this.DIRCCTION_X ,
-        right: this.DIRCCTION_X ,
-        top: this.DIRCCTION_Y ,
-        bottom: this.DIRCCTION_Y 
     }
-    // get screen size
-    const sc =  window.screen
-    this.screenSize = {
-      width: document.body.clientWidth || document.documentElement.clientWidth,
-      height: document.body.clientHeight || document.documentElement.clientHeight,
-    }
+    this.evs = {
+      START: this.platform ? "touchstart" : "mousedown",
+      MOVE: this.platform ? "touchmove" : "mousemove",
+      END: this.platform ? "touchend" : "mouseup"
+    };
+    this.screenceSize = {
+      x: document.documentElement.clientWidth || document.body.clientWidth,
+      y: document.documentElement.clientHeight || document.body.clientHeight
+    };
+
+    const [x0 = 0, x1 = 0, y0 = 0, y1 = 0] = this.options.edgeSpace
+      ? this.edgeSpace.length === 1
+        ? new Array(4).fill(this.edgeSpace[0])
+        : []
+      : [];
+    this.edgeSpace = [x0, x1, y0, y1];
   },
-  computed:{
+  computed: {
     // unit handler, if value without unit then add 'px' string at the end
-    positions (){
+    positions() {
       let p = {};
-      for(let key in this.position){
-        const value = this.position[key]
-        if(this.numReg.test(value)){
-          p[key] = value + 'px'
+      let point = {};
+      if (this.isTransformSupport) {
+        point = this.defaultPoint;
+        p["transform"] =
+          "translate3d(" +
+          this.tCurrentPoint.x +
+          "px, " +
+          this.tCurrentPoint.y +
+          "px, 0)";
+      } else {
+        point = this.position;
+      }
+      for (let key in point) {
+        const value = point[key];
+        if (this.numReg.test(value)) {
+          p[key] = value + "px";
         }
       }
       return p;
     }
   },
   methods: {
-    // add default value, if needed
-    getPlatform(){
-      const agents = ["Android", "iPhone", "Windows Phone", "iPad"]
-      const userAgent = navigator.userAgent
-      for(let ag of agents){
+    getRange(key, type) {
+      const [x0 = 0, x1 = 0, y0 = 0, y1 = 0] = this.edgeSpace;
+      let result = [];
+      if (key === "left" || key === "top") {
+        result = [
+          -this.position[key] + x0,
+          this.screenceSize[this.translateRangeMap[key].type] -
+            this.position[key] -
+            this.wrapSize[type] -
+            x1
+        ];
+      } else if (key === "right" || key === "bottom") {
+        result = [
+          -(
+            this.screenceSize[this.translateRangeMap[key].type] -
+            this.position[key] -
+            this.wrapSize[type] +
+            y0
+          ),
+          this.position[key] - y1
+        ];
+      }
+      return result;
+    },
+    getPlatform() {
+      const agents = ["Android", "iPhone", "Windows Phone", "iPad"];
+      const userAgent = navigator.userAgent;
+      for (let ag of agents) {
         // if match return platform type
-        if(userAgent.includes(ag)){
-          return ag
+        if (userAgent.includes(ag)) {
+          return ag;
         }
       }
       // if it isn't mobile return false
       return false;
     },
+    cssSupported(property) {
+      return property in document.body.style;
+    },
     // get current event point
-    getPoint($event){
-      const changedTouches = this.platform ? $event.changedTouches[0] : { clientX: $event.clientX, clientY: $event.clientY }
-       return {
-        pX: Math.ceil(changedTouches.clientX || changedTouches.pageX),
-        pY: Math.ceil(changedTouches.clientY || changedTouches.pageY)
-      }
+    getPoint($event) {
+      const changedTouches = this.platform
+        ? $event.changedTouches[0]
+        : { clientX: $event.clientX, clientY: $event.clientY };
+      return {
+        x: Math.ceil(changedTouches.clientX || changedTouches.pageX),
+        y: Math.ceil(changedTouches.clientY || changedTouches.pageY)
+      };
     },
     // boundary handler function
-    // director  0 horizontal ，1 verticle
-    boundaryHandler(type, director){
-        // get handler type (horizontal or vertical)
-        const handleType  = this.handleTypes[director]
-        const { disType, sizeType } = handleType;
-        const mv = !handleType[type] ?
-        this.initPoint[type] + this.dis[disType] :  this.initPoint[type] - this.dis[disType];
-        if( mv <= 0 ){
-          this.position[type] = 0
-        }else if( mv + this.wrapSize[sizeType] >= this.screenSize[sizeType] ){
-          this.position[type] = this.screenSize[sizeType] - this.wrapSize[sizeType]
-        }else{
-          this.position[type] = mv
-        }
+    boundaryHandler(key) {
+      const { type, name, index } = this.translateRangeMap[key];
+      const [rMin, rMax] = this.positionRange[type];
+      const mv = this.eleMoveDistance(type, index);
+      const ms = mv + this.startPoint[name];
+      if (ms <= rMin) {
+        return rMin;
+      } else if (ms >= rMax) {
+        return rMax;
+      } else {
+        return ms;
+      }
     },
-    start($event){
-      this.touchInfo[this.evs.START] = this.getPoint($event)
-      // if it isn't mobile
-      this.doc.addEventListener(this.evs.MOVE, this.move)
+    // get element mv distance
+    eleMoveDistance(type, index) {
+      if (this.isTransformSupport) {
+        return this.dis[type];
+      } else {
+        return !index ? this.dis[type] : -this.dis[type];
+      }
     },
-    move($event){
+    start($event) {
+      this.startTouchInfo = this.getPoint($event);
+      this.$emit("start", this.startTouchInfo);
+      this.doc.addEventListener(this.evs.MOVE, this.move);
+    },
+    move($event) {
       // prevent default behaviour
       $event.preventDefault();
       // get current event point
-      const currentTouchInfo = this.getPoint($event)
+      const currentTouchInfo = this.getPoint($event);
       // get finger move distance
-      this.dis.x = currentTouchInfo.pX - this.touchInfo[this.evs.START].pX;
-      this.dis.y = currentTouchInfo.pY - this.touchInfo[this.evs.START].pY;
-      for(let key in this.position){
-        this.boundaryHandler(key, this.directionMap[key])
+      this.dis.x = currentTouchInfo.x - this.startTouchInfo.x;
+      this.dis.y = currentTouchInfo.y - this.startTouchInfo.y;
+      let point = this.isTransformSupport ? this.tCurrentPoint : this.position;
+      for (let key in this.position) {
+        const type = this.isTransformSupport
+          ? this.translateRangeMap[key].type
+          : key;
+        point[type] = this.boundaryHandler(key);
       }
+      this.$emit("move", { ...point }, { ...this.dis });
     },
-    end($event){
+    end($event) {
       // synchro update exist property from position
-      for(let key in this.position){
-        this.initPoint[key] = this.position[key]
+      for (let key in this.position) {
+        this.startPoint[key] = this.isTransformSupport
+          ? this.tCurrentPoint[this.translateRangeMap[key].type]
+          : this.position[key];
       }
-      // if it isn't mobile
-      this.doc.removeEventListener(this.evs.MOVE, this.move)
+      this.doc.removeEventListener(this.evs.MOVE, this.move);
+      this.$emit("end", { ...this.startPoint });
     }
   },
-  mounted(){
+  mounted() {
     // get component root element
-    this.wrap = this.$refs['eMove'];
+    this.wrap = this.$refs["eMove"];
     // temp element size data
     this.wrapSize = {
-      width: this.wrap.clientWidth,
-      height: this.wrap.clientHeight
+      x: this.wrap.clientWidth,
+      y: this.wrap.clientHeight
+    };
+    if (this.isTransformSupport) {
+      // get move range
+      for (let key in this.position) {
+        const { type } = this.translateRangeMap[key];
+        this.positionRange[type] = this.getRange(key, type);
+      }
+    } else {
+      // x: [min, max], y: [min, max], available darg area
+      this.positionRange = {
+        x: [x0, this.screenceSize.x - x1 - this.wrapSize.x],
+        y: [y0, this.screenceSize.y - y1 - this.wrapSize.y]
+      };
     }
     // add event listener
-    this.$refs['eMove'].addEventListener(this.evs.START, this.start)
-    // if mobile
-    this.doc.addEventListener(this.evs.END, this.end)
+    this.$refs["eMove"].addEventListener(this.evs.START, this.start);
+    this.doc.addEventListener(this.evs.END, this.end);
   }
 };
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-  .e-move{
-    position: fixed;
-  }
+.e-move {
+  position: fixed;
+}
+/* 
+  1、add drag available area, via edge space array attribute
+  2、add [start move、move、 end] event
+   */
 </style>
+
+
