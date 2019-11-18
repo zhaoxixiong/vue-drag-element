@@ -2,7 +2,7 @@
 
 ## Environment
 
-This plugin is run with Vue2.
+This plugin is run in Vue2.
 
 ## Platform
 
@@ -12,44 +12,14 @@ Not only mobile but also web are work perfectly.
 
 Import component in your project, then write another a little bit code like below the component will work.
 
-### In script
-
-```
-import VueDragElement from 'vue-drag-element'
-export default {
-  components:{ VueDragElement },
-  ......
-  data() {
-    return {
-      options: {
-         position: {
-           right:12,
-           top:12
-        }
-      }
-    };
-  }
-......
-}
-```
-
-### In template
-
-```vue
-<vue-drag-element :options="options">
-   <!-- here insert you element -->
-   <div class="ball"></div>
-</vue-drag-element>
-```
-
 ## Option
 
 Option is an Object. you can set some setting via option.
 
-| value    | defalut value | descrition                                                   |
-| -------- | ------------- | ------------------------------------------------------------ |
-| position |               | set element position, opsition is an Object ,default vlaue is {right: 0, bottom: 0}, here are avaliable attributes [top\|right\|bottom\|right] |
-| safe     | [0,0,0,0]     | dege space to retain                                         |
+| value     | defalut value            | descrition                                                   |
+| --------- | ------------------------ | ------------------------------------------------------------ |
+| position  | { right:12, bottom: 12 } | set element position, position is an Object , if position is not set or empty, then the default value will be {right: 12, bottom: 12}, here are avaliable attributes [top\|right\|bottom\|right] |
+| edgeSpace | [0,0,0,0]                | edge space to retain                                         |
 
 Although there are four attributes can be used in position object, but actually two attribute is enough, top with left, top with right, or bottom with left , bottom with right. position object just to set drag element position in the web page.
 
@@ -67,7 +37,9 @@ Notice: transform(change translate) way and traditional way (change left、right
 | move      | event | move event trigger  |
 | end       | event | end event trigger   |
 
-You can use event listener like this
+Here is an example, pithy code and easy to use.
+
+### In template
 
 ```vue
 <vue-drag-element :options="options" @start="start" @move="move" @end="end">
@@ -75,4 +47,38 @@ You can use event listener like this
    <div class="ball"></div>
 </vue-drag-element>
 ```
+
+### In script
+
+```vue
+import VueDragElement from 'vue-drag-element'
+export default {
+  components:{ VueDragElement },
+  ......
+  data() {
+    return {
+      options: {
+         position: {
+           right:12,
+           top:12
+        }
+      }
+    };
+  },
+  methods: {
+    start(point) {
+      console.log(point)
+    },
+    move(point) {
+      console.log(point)
+    },
+    end(point) {
+      console.log(point)
+    }
+  }
+......
+}
+```
+
+中文文档：<http://yunkus.com/>
 

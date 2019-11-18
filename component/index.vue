@@ -1,5 +1,5 @@
 <template>
-  <div class="e-move" ref="eMove" :style="positions">
+  <div class="e-drag" ref="eDrag" :style="positions">
     <slot></slot>
   </div>
 </template>
@@ -61,7 +61,10 @@ export default {
     // init data in created
     const dataName = ["startPoint", "defaultPoint", "position"];
     for (let item of dataName) {
-      this[item] = this.options.position ? { ...this.options.position } : {};
+      this[item] =
+        this.options.position && Object.keys(this.position).length
+          ? { ...this.options.position }
+          : { right: 12, bottom: 12 };
     }
     // if transform support reset startPoint atrribute value
     if (this.isTransformSupport) {
@@ -185,7 +188,7 @@ export default {
     },
     start($event) {
       this.startTouchInfo = this.getPoint($event);
-      this.$emit("start", this.startTouchInfo);
+      this.$emit("start", { ...this.startTouchInfo });
       this.doc.addEventListener(this.evs.MOVE, this.move);
     },
     move($event) {
@@ -203,7 +206,7 @@ export default {
           : key;
         point[type] = this.boundaryHandler(key);
       }
-      this.$emit("move", { ...point }, { ...this.dis });
+      this.$emit("move", { ...point });
     },
     end($event) {
       // synchro update exist property from position
@@ -218,7 +221,7 @@ export default {
   },
   mounted() {
     // get component root element
-    this.wrap = this.$refs["eMove"];
+    this.wrap = this.$refs["eDrag"];
     // temp element size data
     this.wrapSize = {
       x: this.wrap.clientWidth,
@@ -238,7 +241,7 @@ export default {
       };
     }
     // add event listener
-    this.$refs["eMove"].addEventListener(this.evs.START, this.start);
+    this.wrap.addEventListener(this.evs.START, this.start);
     this.doc.addEventListener(this.evs.END, this.end);
   }
 };
@@ -246,13 +249,7 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-.e-move {
+.e-drag {
   position: fixed;
 }
-/* 
-  1、add drag available area, via edge space array attribute
-  2、add [start move、move、 end] event
-   */
 </style>
-
-
